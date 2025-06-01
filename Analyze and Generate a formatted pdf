@@ -1,0 +1,81 @@
+import pandas as pd
+from fpdf import FPDF
+from io import StringIO
+from google.colab import files
+
+# Step 1: Define CSV data as a string
+csv_data = """Name,Sales,Region
+Alice,1200,East
+Bob,950,West
+Charlie,1300,East
+Diana,1150,West
+"""
+
+# Step 2: Read data into DataFrame
+def read_data():
+    data = pd.read_csv(StringIO(csv_data))
+    return data
+
+# Step 3: Analyze the data
+def analyze_data(df):
+    df["Sales"] = pd.to_numeric(df["Sales"], errors="coerce")
+    summary = {
+        "Total Entries": len(df),
+        "Total Sales": df["Sales"].sum(),
+        "Average Sales": df["Sales"].mean(),
+        "Sales by Region": df.groupby("Region")["Sales"].sum().to_dict()
+    }
+    return summary
+
+# Step 4: Define PDF report generator
+class PDFReport(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, 'Sales Data Report', ln=True, align='C')
+        self.ln(10)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', align='C')
+
+    def add_section(self, title, content):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, title, ln=True)
+        self.set_font('Arial', '', 11)
+        if isinstance(content, dict):
+            for key, value in content.items():
+                self.cell(0, 10, f'{key}: {value}', ln=True)
+        else:
+            self.cell(0, 10, str(content), ln=True)
+        self.ln(5)
+
+# Step 5: Generate and download PDF in Colab
+def generate_and_download_pdf(summary, output_file):
+    pdf = PDFReport()
+    pdf.add_page()
+    pdf.add_section("Summary", {
+        "Total Entries": summary["Total Entries"],
+        "Total Sales": f"${summary['Total Sales']}",
+        "Average Sales": f"${summary['Average Sales']:.2f}"
+    })
+    pdf.add_section("Sales by Region", summary["Sales by Region"])
+    pdf.output(output_file)
+    print(f"✅ Report generated: {output_file}")
+    files.download(output_file)
+
+# Step 6: Main function
+def main():
+    df = read_data()
+    summary = analyze_data(df)
+    output_file = "Sales_Report.pdf"
+    generate_and_download_pdf(summary, output_file)
+
+# Run the main function
+main()
+
+
+
+# IF TO SEE the output pdf 
+from google.colab import files
+files.download("Sales_Report.pdf")
